@@ -36,9 +36,11 @@ class ProfileScreen extends StatelessWidget {
           _buildProfileTile(context, Icons.language, 'Language', () {}, subtitle: 'English'),
           const SizedBox(height: 48),
           ElevatedButton(
-            onPressed: () {
-              context.read<AuthService>().logout();
-              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+            onPressed: () async {
+              await context.read<AuthService>().logout();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.error,

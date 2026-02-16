@@ -51,12 +51,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 60),
               Icon(
                 Icons.train_rounded,
                 size: 80,

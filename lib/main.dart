@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'presentation/theme.dart';
 import 'data/auth_service.dart';
+import 'data/location_service.dart';
 
-// Import all screens (Placeholders for now)
+// Import all screens
 import 'presentation/screens/splash_screen.dart';
+import 'presentation/screens/smart_plan_screen.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/assistant_screen.dart';
@@ -18,12 +21,16 @@ import 'presentation/screens/train_details_screen.dart';
 import 'presentation/screens/profile_screen.dart';
 import 'presentation/screens/history_screen.dart';
 import 'presentation/screens/signup_screen.dart';
+import 'presentation/screens/map_guide_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => LocationService()),
       ],
       child: const TravelGuideApp(),
     ),
@@ -55,6 +62,8 @@ class TravelGuideApp extends StatelessWidget {
         '/profile': (context) => const ProfileScreen(),
         '/history': (context) => const HistoryScreen(),
         '/signup': (context) => const SignupScreen(),
+        '/smart_plan': (context) => const SmartPlanScreen(),
+        '/guide': (context) => const MapGuideScreen(),
       },
     );
   }

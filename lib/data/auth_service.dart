@@ -1,28 +1,49 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
-import '../config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService extends ChangeNotifier {
   bool _isLoggedIn = false;
   String? _currentUser;
   String? _currentUserName;
-  mongo.Db? _db;
-  mongo.DbCollection? _usersCollection;
+  SharedPreferences? _prefs;
+
+  static const String _usersKey = 'registered_users';
+  static const String _loggedInUserKey = 'logged_in_user';
 
   bool get isLoggedIn => _isLoggedIn;
   String? get currentUser => _currentUser;
   String? get currentUserName => _currentUserName;
 
   Future<void> _ensureInitialized() async {
-    if (_db != null && _db!.isConnected) return;
-    
-    try {
-      _db = await mongo.Db.create(AppConfig.mongoUri);
-      await _db!.open();
-      _usersCollection = _db!.collection(AppConfig.collectionName);
-    } catch (e) {
-      debugPrint('MongoDB Connection Error: $e');
-      rethrow;
+    _prefs ??= await SharedPreferences.getInstance();
+  }
+
+  /// Get all registered users from local storage
+  Future<List<Map<String, dynamic>>> _getUsers() async {
+    await _ensureInitialized();
+    final usersJson = _prefs!.getString(_usersKey);
+    if (usersJson == null) return [];
+    final List<dynamic> decoded = jsonDecode(usersJson);
+    return decoded.cast<Map<String, dynamic>>();
+  }
+
+  /// Save users to local storage
+  Future<void> _saveUsers(List<Map<String, dynamic>> users) async {
+    await _ensureInitialized();
+    await _prefs!.setString(_usersKey, jsonEncode(users));
+  }
+
+  /// Check and restore login state on app start
+  Future<void> checkLoginState() async {
+    await _ensureInitialized();
+    final loggedInUser = _prefs!.getString(_loggedInUserKey);
+    if (loggedInUser != null) {
+      final userData = jsonDecode(loggedInUser);
+      _isLoggedIn = true;
+      _currentUser = userData['email'];
+      _currentUserName = userData['name'];
+      notifyListeners();
     }
   }
 
@@ -30,17 +51,22 @@ class AuthService extends ChangeNotifier {
     try {
       await _ensureInitialized();
       
+      // Get existing users
+      final users = await _getUsers();
+      
       // Check if user already exists
-      final existingUser = await _usersCollection!.findOne(mongo.where.eq('email', email));
-      if (existingUser != null) return false;
+      final existingUser = users.any((user) => user['email'] == email);
+      if (existingUser) return false;
 
-      await _usersCollection!.insert({
+      // Add new user
+      users.add({
         'name': name,
         'email': email,
-        'password': password, // Note: In a real app, hash this!
+        'password': password,
         'createdAt': DateTime.now().toIso8601String(),
       });
       
+      await _saveUsers(users);
       return true;
     } catch (e) {
       debugPrint('Signup Error: $e');
@@ -52,14 +78,25 @@ class AuthService extends ChangeNotifier {
     try {
       await _ensureInitialized();
       
-      final user = await _usersCollection!.findOne(
-        mongo.where.eq('email', email).eq('password', password)
+      final users = await _getUsers();
+      
+      // Find user with matching email and password
+      final user = users.firstWhere(
+        (u) => u['email'] == email && u['password'] == password,
+        orElse: () => {},
       );
 
-      if (user != null) {
+      if (user.isNotEmpty) {
         _isLoggedIn = true;
         _currentUser = email;
         _currentUserName = user['name'];
+        
+        // Persist login state
+        await _prefs!.setString(_loggedInUserKey, jsonEncode({
+          'email': email,
+          'name': user['name'],
+        }));
+        
         notifyListeners();
         return true;
       }
@@ -70,16 +107,12 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
+    await _ensureInitialized();
     _isLoggedIn = false;
     _currentUser = null;
     _currentUserName = null;
+    await _prefs!.remove(_loggedInUserKey);
     notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _db?.close();
-    super.dispose();
   }
 }

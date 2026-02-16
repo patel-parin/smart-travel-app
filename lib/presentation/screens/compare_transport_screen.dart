@@ -1,63 +1,269 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../data/location_service.dart';
+import '../../data/railway_service.dart';
+import '../../data/taxi_estimator.dart';
 import '../../models/travel_models.dart';
 
-class CompareTransportScreen extends StatelessWidget {
+class CompareTransportScreen extends StatefulWidget {
   const CompareTransportScreen({super.key});
+
+  @override
+  State<CompareTransportScreen> createState() => _CompareTransportScreenState();
+}
+
+class _CompareTransportScreenState extends State<CompareTransportScreen> {
+  List<TransportOption> _options = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  String _bestSuggestion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAllOptions();
+  }
+
+  bool _hasTrains = false;
+
+  Future<void> _fetchAllOptions() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final locationService = context.read<LocationService>();
+      await locationService.getCurrentPosition();
+
+      // Try to fetch train options
+      final railService = MockRailwayService();
+      List<Train> trains = [];
+      try {
+        trains = await railService.getTrainsBetweenStations('Mumbai', 'Delhi');
+      } catch (_) {
+        // No trains available - continue with local transport only
+        trains = [];
+      }
+
+      _hasTrains = trains.isNotEmpty;
+
+      // Calculate taxi estimates for local transport
+      final taxiEstimator = TaxiFareEstimator();
+      final taxiEstimates = taxiEstimator.getEstimates(8.5); // Local distance ~8.5km
+
+      // Build transport options
+      final List<TransportOption> options = [];
+
+      // Add train options only if available
+      if (_hasTrains) {
+        for (final train in trains) {
+          options.add(TransportOption(
+            provider: '🚆 ${train.name}',
+            eta: train.arrival,
+            duration: train.duration,
+            fare: '₹450 - ₹1,200',
+            convenience: 3.5,
+          ));
+        }
+      }
+
+      // Always add local transport options
+      for (final taxi in taxiEstimates) {
+        String icon = '';
+        double convenience = 4.0;
+        String duration = '25 min';
+        
+        switch (taxi.provider.toLowerCase()) {
+          case 'rapido':
+            icon = '🏍️';
+            convenience = 3.5;
+            duration = '20 min';
+            break;
+          case 'auto':
+            icon = '🛺';
+            convenience = 3.8;
+            duration = '25 min';
+            break;
+          case 'ola':
+            icon = '🚕';
+            convenience = 4.2;
+            duration = '22 min';
+            break;
+          case 'uber':
+            icon = '🚗';
+            convenience = 4.5;
+            duration = '22 min';
+            break;
+        }
+        
+        options.add(TransportOption(
+          provider: '$icon ${taxi.provider} ${taxi.vehicleType}',
+          eta: taxi.waitTime,
+          duration: duration,
+          fare: '₹${taxi.estimatedFare}',
+          convenience: convenience,
+        ));
+      }
+
+      // Mark best option
+      if (options.isNotEmpty) {
+        int bestIndex = 0;
+        
+        if (_hasTrains) {
+          // If trains available, mark train as best (cheapest for long distance)
+          bestIndex = 0;
+          _bestSuggestion = 'Train is up to 70% cheaper than cab for intercity travel.';
+        } else {
+          // No trains - find cheapest local transport
+          bestIndex = options.indexWhere((o) => o.provider.contains('Rapido'));
+          if (bestIndex == -1) bestIndex = 0;
+          _bestSuggestion = 'Rapido Bike is the fastest and most affordable for short distances.';
+        }
+        
+        final best = options[bestIndex];
+        options[bestIndex] = TransportOption(
+          provider: best.provider,
+          eta: best.eta,
+          duration: best.duration,
+          fare: best.fare,
+          convenience: best.convenience,
+          isBest: true,
+        );
+      }
+
+      setState(() {
+        _options = options;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load options: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Mock data for comparison
-    final List<TransportOption> options = [
-      TransportOption(
-        provider: 'Uber Intercity',
-        eta: '10:30 AM',
-        duration: '4h 20m',
-        fare: '₹4,200',
-        convenience: 4.5,
-      ),
-      TransportOption(
-        provider: 'Rail + Metro',
-        eta: '11:15 AM',
-        duration: '5h 05m',
-        fare: '₹850',
-        convenience: 3.5,
-        isBest: true, // Example of "Best Economical Option"
-      ),
-      TransportOption(
-        provider: 'Ola Electric',
-        eta: '10:15 AM',
-        duration: '4h 05m',
-        fare: '₹5,100',
-        convenience: 5.0,
-      ),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Compare Options'),
         elevation: 0,
-      ),
-      body: Column(
-        children: [
-          _buildSuggestionBanner(theme),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: options.length,
-              itemBuilder: (context, index) {
-                final option = options[index];
-                return _buildComparisonCard(theme, option);
-              },
-            ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchAllOptions,
           ),
         ],
       ),
+      body: _buildBody(theme),
+    );
+  }
+
+  Widget _buildBody(ThemeData theme) {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              'Comparing all transport options...',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.orange),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _fetchAllOptions,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_options.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'No transport options found',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        _buildSuggestionBanner(theme),
+        if (!_hasTrains)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No trains available for this route. Showing local transport options.',
+                    style: TextStyle(fontSize: 12, color: Colors.orange),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _options.length,
+            itemBuilder: (context, index) {
+              final option = _options[index];
+              return _buildComparisonCard(theme, option);
+            },
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildSuggestionBanner(ThemeData theme) {
+    if (_bestSuggestion.isEmpty) return const SizedBox.shrink();
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -71,10 +277,10 @@ class CompareTransportScreen extends StatelessWidget {
         children: [
           Icon(Icons.auto_awesome, color: theme.colorScheme.primary),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Antigravity Suggests: Rail + Metro is 80% cheaper with moderate convenience.',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              'Smart Suggestion: $_bestSuggestion',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ),
         ],
@@ -167,6 +373,20 @@ class CompareTransportScreen extends StatelessWidget {
                 ),
               ),
             ),
+          // Navigate button
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: TextButton.icon(
+              onPressed: () => Navigator.pushNamed(context, '/guide'),
+              icon: const Icon(Icons.directions, size: 18),
+              label: const Text('Guide'),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              ),
+            ),
+          ),
         ],
       ),
     );
