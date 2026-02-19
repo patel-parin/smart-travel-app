@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/auth_service.dart';
+import '../../data/theme_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -9,6 +10,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = context.watch<AuthService>().currentUser;
+    final themeService = context.watch<ThemeService>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile & Settings')),
@@ -32,6 +34,16 @@ class ProfileScreen extends StatelessWidget {
           _buildProfileTile(context, Icons.bookmark, 'Saved Trips', () {
             Navigator.pushNamed(context, '/history');
           }),
+          _buildProfileTile(
+            context,
+            Icons.dark_mode,
+            'Dark Mode',
+            () => themeService.toggleTheme(),
+            trailing: Switch(
+              value: themeService.isDarkMode,
+              onChanged: (_) => themeService.toggleTheme(),
+            ),
+          ),
           _buildProfileTile(context, Icons.notifications, 'Notifications', () {}, trailing: Switch(value: true, onChanged: (v) {})),
           _buildProfileTile(context, Icons.language, 'Language', () {}, subtitle: 'English'),
           const SizedBox(height: 48),

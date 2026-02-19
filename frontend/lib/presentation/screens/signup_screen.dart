@@ -48,8 +48,12 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } else {
       if (mounted) {
+        final error = context.read<AuthService>().errorMessage ?? 'Registration failed.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration failed. Email might already be in use.')),
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

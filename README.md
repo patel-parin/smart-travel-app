@@ -1,16 +1,25 @@
-# travel_guide_app
+# Smart Travel App
 
-A new Flutter project.
+A comprehensive travel guide application with multimodal transport options.
+
+## Project Structure
+
+- **frontend/**: The Flutter mobile application.
+- **backend/**: The backend server API (Setup pending).
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+### Frontend (Flutter App)
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1.  Navigate to the `frontend` directory:
+    ```bash
+    cd frontend
+    ```
+2.  Install dependencies:
+    ```bash
+    flutter pub get
+    ```
+3.  Run the app:
+    ```bash
+    flutter run
+    ```

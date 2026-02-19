@@ -58,6 +58,56 @@ class AppTheme {
       ),
     ),
   );
+
+  static ThemeData lightTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: Colors.white,
+    colorScheme: const ColorScheme.light(
+      primary: primaryVibrant,
+      secondary: secondaryVibrant,
+      tertiary: accentVibrant,
+      surface: Color(0xFFF5F5F5),
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: Colors.black87,
+    ),
+    textTheme: const TextTheme(
+      displaySmall: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+      titleLarge: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+      titleMedium: TextStyle(
+        fontWeight: FontWeight.w600,
+        color: primaryVibrant,
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xFFF0F0F0),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      labelStyle: TextStyle(color: Colors.grey[700]),
+      prefixIconColor: secondaryVibrant,
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: primaryVibrant,
+        foregroundColor: Colors.white,
+        shape: RoundedCornerShape(12),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+    ),
+  );
 }
 
 class RoundedCornerShape extends RoundedRectangleBorder {
