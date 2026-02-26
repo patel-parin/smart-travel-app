@@ -120,39 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: _isLoading ? null : () async {
-                  setState(() => _isLoading = true);
-                  final success = await context.read<AuthService>().signInWithGoogle();
-                  setState(() => _isLoading = false);
-                  
-                  if (success) {
-                    if (mounted) {
-                      Navigator.pushReplacementNamed(context, '/home');
-                    }
-                  } else {
-                    if (mounted) {
-                      final error = context.read<AuthService>().errorMessage ?? 'Google Sign-In canceled.';
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(error),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  side: BorderSide(color: theme.colorScheme.primary),
-                ),
-                icon: const Icon(Icons.login), // Replace with Google icon asset if available
-                label: const Text('Sign in with Google'),
-              ),
+
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => Navigator.pushNamed(context, '/signup'),

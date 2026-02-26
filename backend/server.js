@@ -19,8 +19,12 @@ let firebaseInitialized = false;
 
 try {
     const serviceAccount = require(serviceAccountPath);
+    // Force IPv4 to prevent ETIMEDOUT on some dual-stack networks
+    const https = require('https');
+    const agent = new https.Agent({ family: 4 });
     admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+        credential: admin.credential.cert(serviceAccount),
+        httpAgent: agent
     });
     firebaseInitialized = true;
     console.log("Firebase Admin Initialized successfully.");
@@ -175,6 +179,6 @@ app.post('/api/auth/google', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
 });

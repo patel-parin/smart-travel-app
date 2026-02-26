@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService extends ChangeNotifier {
   // Use 10.0.2.2 for Android emulator to access host localhost
   // Use localhost for iOS simulator
   // Use your machine's IP for real devices
   // Use 10.0.2.2 for Android emulator
-  // Use 172.16.96.203 (Your Local IP) for physical device
-  static const String _baseUrl = 'http://172.16.96.203:3000/api/auth';
+  // Use 172.16.103.10 when testing on physical devices on the same Wi-Fi
+  static const String _baseUrl = 'http://127.0.0.1:3000/api/auth';
 
   bool _isLoggedIn = false;
   String? _currentUser; // Email
@@ -109,58 +108,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // Google Sign-In
-  final _googleSignIn = GoogleSignIn();
 
-  Future<bool> signInWithGoogle() async {
-    _errorMessage = null;
-    try {
-      // 1. Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return false; // User canceled
-
-      // 2. Get the authentication details (idToken)
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        _errorMessage = 'Failed to retrieve Google ID Token';
-        return false;
-      }
-
-      // 3. Send ID Token to Backend
-      final response = await http.post(
-        Uri.parse('$_baseUrl/google'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'idToken': idToken}),
-      );
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
-        _isLoggedIn = true;
-        _currentUser = data['email'];
-        _currentUserName = data['name'];
-        // Note: data['photoUrl'] is also available
-
-        // Save to SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_email', _currentUser!);
-        await prefs.setString('user_name', _currentUserName!);
-
-        notifyListeners();
-        return true;
-      } else {
-        _errorMessage = data['error'] ?? 'Google Login failed.';
-        return false;
-      }
-
-    } catch (e) {
-      _errorMessage = 'Google Sign-In Error: $e';
-      debugPrint('Google Sign-In Error: $e');
-      return false;
-    }
-  }
 
   Future<void> logout() async {
     _isLoggedIn = false;
